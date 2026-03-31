@@ -36,8 +36,11 @@ npx vitest run -t "test name pattern"
 
 ## Fork Workflow (od-nanoclaw)
 
+- **GitHub:** `odurgun/nanoclaw` (origin), `qwibitai/nanoclaw` (upstream)
 - `main`: tracks upstream `qwibitai/nanoclaw`. Never commit directly.
-- `od-nanoclaw`: development branch. All custom work happens here.
+- `od-nanoclaw`: development branch. All custom work happens here. Push to origin.
+
+**Commit style:** imperative mood, concise. Prefix with scope when relevant (e.g., `fix:`, `feat:`, `docs:`, `style:`, `chore:`). Free-form messages OK for descriptive commits (e.g., `Documents and projects folders are shared`).
 
 **Update from upstream:**
 
@@ -46,8 +49,11 @@ npx vitest run -t "test name pattern"
 3. Switch back: `git checkout od-nanoclaw`
 4. Rebase onto updated main: `git rebase main`
 5. Build/test: `npm run build && npm test`
+6. Push: `git push origin od-nanoclaw`
 
 **Always rebase `od-nanoclaw` onto `main` after an upstream update.**
+
+**Push after commits:** `git push origin od-nanoclaw`
 
 ## Code Style
 
@@ -91,7 +97,7 @@ npx vitest run -t "test name pattern"
   catch (_err) { ... }    // unused, prefix with _
   ```
 - `no-catch-all` ESLint plugin warns on overly broad catches
-- Use `pino` logger for error reporting:
+- Use the built-in `logger` (from `./logger.js`) for error reporting:
   ```ts
   logger.error({ err, groupId }, 'Failed to process message');
   ```
@@ -123,3 +129,62 @@ npx vitest run -t "test name pattern"
 - TypeScript target: ES2022, moduleResolution: NodeNext
 - Node.js >= 20 required
 - Runtime: `tsx` for dev, compiled `tsc` for production
+
+## Service Management
+
+```bash
+# Start / stop / restart
+systemctl --user start nanoclaw
+systemctl --user stop nanoclaw
+systemctl --user restart nanoclaw
+
+# Status
+systemctl --user status nanoclaw
+
+# Logs (stdout/stderr redirected to files)
+tail -f logs/nanoclaw.log          # normal output
+tail -f logs/nanoclaw.error.log    # errors only
+```
+
+**Service file:** `~/.config/systemd/user/nanoclaw.service`
+
+## Key Paths
+
+| Path                                      | Purpose                                        |
+| ----------------------------------------- | ---------------------------------------------- |
+| `store/messages.db`                       | SQLite database (groups, messages, tasks)      |
+| `logs/nanoclaw.log`                       | Application stdout                             |
+| `logs/nanoclaw.error.log`                 | Application stderr / errors                    |
+| `~/.config/nanoclaw/mount-allowlist.json` | Mount security allowlist                       |
+| `groups/`                                 | Per-group CLAUDE.md memory                     |
+| `container/agent-runner/`                 | Separate sub-project built inside Docker image |
+
+## Mount Allowlist
+
+Location: `~/.config/nanoclaw/mount-allowlist.json`
+
+```json
+{
+  "allowedRoots": [
+    {
+      "path": "/home/ozcan/Documents",
+      "allowReadWrite": true
+    },
+    {
+      "path": "/home/ozcan/projects",
+      "allowReadWrite": true
+    }
+  ],
+  "blockedPatterns": [],
+  "nonMainReadOnly": false
+}
+```
+
+**Important:** `allowedRoots` entries must be objects with a `path` property — plain strings will cause a crash (`Cannot read properties of undefined (reading 'startsWith')`).
+
+## Container Image
+
+- `container/agent-runner/` is a separate project with its own `package.json`
+- Built inside the Docker image during `docker build` — not by `npm run build` at the project root
+- After editing files under `container/agent-runner/src/`, the Docker image must be rebuilt for changes to take effect
+- MCP tools are defined in `container/agent-runner/src/ipc-mcp-stdio.ts`
