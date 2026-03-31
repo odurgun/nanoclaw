@@ -4,6 +4,46 @@ Custom changelog for the `od-nanoclaw` fork. Tracks all edits, upstream syncs, a
 
 ---
 
+## 2026-03-30 — Full setup (fresh install)
+
+### What happened
+
+1. Git remits verified — `origin` → `odurgun/nanoclaw`, `upstream` → `qwibitai/nanoclaw`
+2. Bootstrap: Node.js 24.14.0, deps, native modules — all OK
+3. Environment: Linux, Docker running, no prior auth/groups
+4. Timezone: `America/New_York` (auto-detected)
+5. Container: Docker runtime, image built and tested
+6. Credentials: OneCLI already running, existing Anthropic API key kept
+7. Channel: Slack (main channel `C0ALUNEV0JX`, trigger `@Andy`)
+8. Mounts: `/home/ozcan/Documents`, `/home/ozcan/projects` (read-write)
+9. Service: systemd user service, running
+
+### Setup results
+
+| Step        | Status                      |
+| ----------- | --------------------------- |
+| Bootstrap   | ✅ Node 24.14.0, deps OK    |
+| Environment | ✅ Linux, Docker running    |
+| Timezone    | ✅ America/New_York         |
+| Container   | ✅ Built, tested            |
+| Credentials | ✅ OneCLI + Anthropic key   |
+| Channel     | ✅ Slack main `C0ALUNEV0JX` |
+| Mounts      | ✅ 2 directories (rw)       |
+| Service     | ✅ systemd running          |
+| Verify      | ✅ All checks passed        |
+
+### Config snapshot
+
+- **Platform:** Linux, x86_64
+- **Runtime:** Docker
+- **NanoClaw version:** 1.2.43
+- **Node:** 24.14.0
+- **Channel:** Slack (main)
+- **Assistant name:** Andy
+- **Credential system:** OneCLI Agent Vault
+
+---
+
 ## 2026-03-30 — Upstream sync v1.2.43 + skill updates
 
 ### What happened
@@ -74,6 +114,63 @@ d59c80b Merge remote-tracking branch 'upstream/main' into od-nanoclaw
 b7e9c71 Merge remote-tracking branch 'upstream/skill/channel-formatting' into od-nanoclaw
 2092d55 before updating to 1.2.42, with new oneCLI setup    ← fork base
 ```
+
+---
+
+## 2026-03-30 — containerConfig.additionalMounts MCP tool support
+
+### What happened
+
+1. Added `containerConfig` parameter to `register_group` MCP tool schema
+2. Verified full pipeline (types, DB, IPC, mount validation, container startup) already existed
+3. Tested end-to-end: DB storage, Docker mount verification
+
+### Change
+
+**Only file modified:** `container/agent-runner/src/ipc-mcp-stdio.ts`
+
+- Added optional `containerConfig.additionalMounts` Zod schema to `register_group` tool (lines ~463–481)
+- Passes `containerConfig` through in the IPC data object (lines ~505–506)
+
+### Why it was small
+
+The host-side infrastructure was already complete:
+
+| Layer             | File                              | Status       |
+| ----------------- | --------------------------------- | ------------ |
+| Types             | `src/types.ts:1-43`               | Pre-existing |
+| DB schema         | `src/db.ts:82`                    | Pre-existing |
+| DB read/write     | `src/db.ts:606-674`               | Pre-existing |
+| IPC handler       | `src/ipc.ts:453`                  | Pre-existing |
+| Mount validation  | `src/mount-security.ts:336-385`   | Pre-existing |
+| Container startup | `src/container-runner.ts:213-221` | Pre-existing |
+
+### Test data applied
+
+Group `slack:C0ALUNEV0JX` updated with:
+
+```json
+{
+  "additionalMounts": [
+    {
+      "hostPath": "/home/ozcan/Documents",
+      "containerPath": "documents",
+      "readonly": false
+    },
+    {
+      "hostPath": "/home/ozcan/projects",
+      "containerPath": "projects",
+      "readonly": false
+    }
+  ]
+}
+```
+
+### Validation
+
+- ✅ Build: `npm run build` — passed
+- ✅ Tests: `npm test` — 285 tests passed
+- ✅ Docker: `/workspace/extra/documents` and `/workspace/extra/projects` verified inside container
 
 ---
 
